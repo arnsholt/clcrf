@@ -60,3 +60,11 @@
         for denominator = (expt 16 i)
         do (incf mantissa (/ numerator denominator))
         finally (return (float mantissa))))
+
+(defun decode-crf (crf input)
+  ; TODO: Apply patterns to input to get observations.
+  (loop with tags = (make-array (length input))
+        with prev = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
+        with cur  = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
+        for i from 0 to (1- length input))
+  )
