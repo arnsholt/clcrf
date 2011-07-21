@@ -32,10 +32,17 @@
           (tagset (read file))
           (observations (read file))
           (weights (read file)))
-      (make-crf :templates templates
+      (make-crf :templates (compile-templates templates)
                 :tagset (quarks-from-list tagset)
                 :observations (quarks-from-list observations)
                 :weights (munge-weights weights)))))
+
+(defun compile-templates (templates)
+  (map 'vector #'compile-template templates))
+
+(defun compile-template (template)
+  ; TODO: Implement this.
+  template)
 
 (defun munge-weights (weights)
   (let ((hash (make-hash-table :test #'eql)))
