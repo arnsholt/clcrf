@@ -45,6 +45,7 @@
 (defun compile-templates (templates)
   (mapcar #'compile-template templates))
 
+; TODO: Handle * templates.
 (defun compile-template (template &key (compile-p t))
   (loop
     with start = 0
