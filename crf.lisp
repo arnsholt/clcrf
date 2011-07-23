@@ -66,7 +66,10 @@
                              arguments)))
     finally (setf format (concatenate 'string format (subseq template start)))
             (return (let ((lambda
-                            `(lambda (sequence position) (format nil ,format ,@(reverse arguments)))))
+                            `(lambda (sequence position)
+                               (declare (ignorable sequence)
+                                        (ignorable position))
+                               (format nil ,format ,@(reverse arguments)))))
                       (if compile-p
                         (compile nil lambda)
                         lambda)))))
