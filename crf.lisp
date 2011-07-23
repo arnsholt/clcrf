@@ -113,8 +113,11 @@
         with tags  = (make-array (length input))
         with prev  = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
         with cur   = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
-        for i from 0 to (1- (length input)))
-  )
+        for i from 0 below (length input)
+        do (loop
+             for q-prime from 0 below tags
+             do (loop
+                  for q from 0 below tags))))
 
 (defun read-corpus (filename)
   (with-open-file (file filename :direction :input)
