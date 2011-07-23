@@ -121,14 +121,19 @@
         ; Swap prev. and cur:
         do (psetf prev cur cur prev)
         ; Clear new cur. vector:
-        do (loop i from 0 below tagset-size do (setf (aref cur i) 0))
+        do (loop for i from 0 below tagset-size do (setf (aref cur i) 0))
         do (loop
              for q from 0 below tagset-size
              for unigram-potential = (unigram-potential (elt input i) q)
              do (loop
-                  for q-prime from 0 below tagset-size))))
+                  for q-prime from 0 below tagset-size
+                  for bigram-potential = (bigram-potential (elt input i) q-prime q)))))
 
 (defun unigram-potential (observations q)
+  ; TODO: This.
+  1)
+
+(defun bigram-potential (observations q-prime q)
   ; TODO: This.
   1)
 
