@@ -79,9 +79,9 @@
           (t (elt (elt sequence row) column)))))
 
 (defun apply-templates (crf input)
-  (mapcar (lambda (row)
-            (mapcar (lambda (template) (funcall template row)) (crf-templates crf)))
-          input))
+  (loop for position from 0
+        for row in input ; Not read. Used to only iterate over valid indices into input.
+        collect (mapcar (lambda (template) (funcall template input position)) (crf-templates crf))))
 
 (defun munge-weights (weights)
   (let ((hash (make-hash-table :test #'eql)))
@@ -115,3 +115,14 @@
         with cur   = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
         for i from 0 to (1- (length input)))
   )
+
+(defun read-corpus (filename)
+  (with-open-file (file filename :direction :input)
+    (read-sentence file)))
+
+(defun read-sentence (file)
+  (loop with got-data = nil
+        for line = (cl-ppcre:regex-replace-all "\\A\\s+|\\s+\\z" (read-line file nil nil) "")
+        while (or (not got-data) (< 0 (length line)))
+        if (and (not got-data) (< 0 (length line))) do (setf got-data t)
+        if got-data collect (cl-ppcre:split "\\s+" line)))
