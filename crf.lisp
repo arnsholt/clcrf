@@ -1,3 +1,8 @@
+(in-package :cl-user)
+(defpackage :clcrf (:use "COMMON-LISP"))
+
+(in-package :clcrf)
+
 ;;; Quick and dirty hack for string <-> int conversion.
 (defstruct quarks
   (size 0)
