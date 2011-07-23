@@ -46,8 +46,36 @@
   (map 'vector #'compile-template templates))
 
 (defun compile-template (template)
-  ; TODO: Implement this.
-  template)
+  (loop
+    with start = 0
+     and format = ""
+     and arguments = ()
+     and end = nil
+    for (match-start match-end reg-start reg-end) = (multiple-value-list
+                                                      (cl-ppcre:scan "%x\\[([+-]?\\d+),([+-]?\\d+)\\]" template :start start))
+    while match-start
+    do (setf format (concatenate 'string format (subseq template start match-start) "~a"))
+       (setf start match-end)
+       (let ((first-start  (aref reg-start 0))
+             (first-end    (aref reg-end   0))
+             (second-start (aref reg-start 1))
+             (second-end   (aref reg-end   1)))
+         (setf arguments (cons (list 'get-relative (parse-integer template :start first-start  :end first-end)
+                                                   (parse-integer template :start second-start :end second-end)
+                                                   'sequence 'position)
+                             arguments)))
+    finally (setf format (concatenate 'string format (subseq template start)))
+            ;(return `(lambda (sequence position) (format nil ,format ,@(reverse arguments)))))) ; For debugging.
+            (return (compile nil
+                      `(lambda (sequence position) (format nil ,format ,@(reverse arguments)))))))
+
+(defun get-relative (row-offset column sequence position)
+  (let ((row (+ position row-offset))
+        (length (length sequence)))
+    (cond ((>= row length) (format nil "_X+~a" (- (1+ row) length)))
+          ((<  row 0)      (format nil "_X~a" row))
+          (t (elt (elt sequence row) column)))))
+  ;(elt (elt sequence (+ position row-offset)) column))
 
 (defun munge-weights (weights)
   (let ((hash (make-hash-table :test #'eql)))
