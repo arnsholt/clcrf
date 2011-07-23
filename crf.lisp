@@ -45,7 +45,7 @@
 (defun compile-templates (templates)
   (map 'vector #'compile-template templates))
 
-(defun compile-template (template)
+(defun compile-template (template &key (compile-p t))
   (loop
     with start = 0
      and format = ""
@@ -65,9 +65,11 @@
                                                    'sequence 'position)
                              arguments)))
     finally (setf format (concatenate 'string format (subseq template start)))
-            ;(return `(lambda (sequence position) (format nil ,format ,@(reverse arguments)))))) ; For debugging.
-            (return (compile nil
-                      `(lambda (sequence position) (format nil ,format ,@(reverse arguments)))))))
+            (return (let ((lambda
+                            `(lambda (sequence position) (format nil ,format ,@(reverse arguments)))))
+                      (if compile-p
+                        (compile nil lambda)
+                        lambda)))))
 
 (defun get-relative (row-offset column sequence position)
   (let ((row (+ position row-offset))
@@ -75,7 +77,6 @@
     (cond ((>= row length) (format nil "_X+~a" (- (1+ row) length)))
           ((<  row 0)      (format nil "_X~a" row))
           (t (elt (elt sequence row) column)))))
-  ;(elt (elt sequence (+ position row-offset)) column))
 
 (defun munge-weights (weights)
   (let ((hash (make-hash-table :test #'eql)))
