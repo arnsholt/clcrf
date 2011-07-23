@@ -111,17 +111,25 @@
         finally (return (float mantissa))))
 
 (defun decode-crf (crf input)
-  ; TODO: Apply patterns to input to get observations.
   (loop with input       = (apply-templates crf input)
         with tagset-size = (quarks-size (crf-tagset crf))
         with tags        = (make-array (length input))
         with prev        = (make-array tagset-size :initial-element 0)
         with cur         = (make-array tagset-size :initial-element 0)
         for i from 0 below (length input)
+        ; Swap prev. and cur:
+        do (psetf prev cur cur prev)
+        ; Clear new cur. vector:
+        do (loop i from 0 below tagset-size do (setf (aref cur i) 0))
         do (loop
-             for q-prime from 0 below tagset-size
+             for q from 0 below tagset-size
+             for unigram-potential = (unigram-potential (elt input i) q)
              do (loop
-                  for q from 0 below tagset-size))))
+                  for q-prime from 0 below tagset-size))))
+
+(defun unigram-potential (observations q)
+  ; TODO: This.
+  1)
 
 (defun read-corpus (filename)
   (with-open-file (file filename :direction :input)
