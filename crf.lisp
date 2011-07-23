@@ -43,7 +43,7 @@
                 :weights (munge-weights weights)))))
 
 (defun compile-templates (templates)
-  (map 'vector #'compile-template templates))
+  (mapcar #'compile-template templates))
 
 (defun compile-template (template &key (compile-p t))
   (loop
@@ -78,6 +78,11 @@
           ((<  row 0)      (format nil "_X~a" row))
           (t (elt (elt sequence row) column)))))
 
+(defun apply-templates (crf input)
+  (mapcar (lambda (row)
+            (mapcar (lambda (template) (funcall template row)) (crf-templates crf)))
+          input))
+
 (defun munge-weights (weights)
   (let ((hash (make-hash-table :test #'eql)))
     (map nil (lambda (tuple) (setf (gethash (first tuple) hash) (munge-weight (rest tuple)))) weights)
@@ -104,8 +109,9 @@
 
 (defun decode-crf (crf input)
   ; TODO: Apply patterns to input to get observations.
-  (loop with tags = (make-array (length input))
-        with prev = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
-        with cur  = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
+  (loop with input = (apply-templates crf input)
+        with tags  = (make-array (length input))
+        with prev  = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
+        with cur   = (make-array (quarks-size (crf-tagset crf)) :initial-element 0)
         for i from 0 to (1- (length input)))
   )
