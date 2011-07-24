@@ -133,7 +133,10 @@
                   for q-prime from 0 below tagset-size
                   for bigram-potential = (reduce #'+ (mapcar (lambda (observation)
                                                                (bigram-potential crf observation q-prime q))
-                                                             (elt input i)))))))
+                                                             (elt input i)))
+                  for potential = (+ unigram-potential bigram-potential (aref prev q-prime))
+                  if (> potential (aref cur q)) do (setf (aref cur q) potential (aref tags i) q)))
+        finally (return tags)))
 
 (defun unigram-potential (crf observation q)
   (if (equal "u" (subseq observation 0 1))
