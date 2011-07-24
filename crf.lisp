@@ -19,6 +19,9 @@
     (map nil (lambda (item) (add-quark quarks item)) list)
     quarks))
 
+(defun quarks-to-int (quarks string)
+  (gethash string (quarks-string-to-int quarks)))
+
 (defstruct crf
   templates
   tagset
@@ -124,18 +127,24 @@
         do (loop for i from 0 below tagset-size do (setf (aref cur i) 0))
         do (loop
              for q from 0 below tagset-size
-             for unigram-potential = (unigram-potential (elt input i) q)
+             for unigram-potential = (reduce #'+ (mapcar (lambda (observation)
+                                                           (unigram-potential crf observation q))
+                                                         (elt input i)))
              do (loop
                   for q-prime from 0 below tagset-size
-                  for bigram-potential = (bigram-potential (elt input i) q-prime q)))))
+                  for bigram-potential = (reduce #'+ (mapcar (lambda (observation)
+                                                               (bigram-potential crf observation q-prime q))
+                                                             (elt input i)))))))
 
-(defun unigram-potential (observations q)
-  ; TODO: This.
-  1)
+(defun unigram-potential (crf observation q)
+  (if (equal "u" (subseq observation 0 1))
+    (gethash (+ q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf))
+    0))
 
-(defun bigram-potential (observations q-prime q)
-  ; TODO: This.
-  1)
+(defun bigram-potential (crf observation q-prime q)
+  (if (equal "b" (subseq observation 0 1))
+    (gethash (+ q-prime q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf))
+    0))
 
 (defun read-corpus (filename)
   (with-open-file (file filename :direction :input)
