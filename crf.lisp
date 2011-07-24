@@ -54,7 +54,6 @@
     with start = 0
      and format = ""
      and arguments = ()
-     and end = nil
     for (match-start match-end reg-start reg-end) = (multiple-value-list
                                                       (cl-ppcre:scan "%x\\[([+-]?\\d+),([+-]?\\d+)\\]" template :start start))
     while match-start
