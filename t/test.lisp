@@ -27,7 +27,9 @@
   (format t "# ~a~%" message))
 
 (defun is (got expected message &key (test #'equal))
-  (ok (funcall test got expected) message))
+  (let ((result (funcall test got expected)))
+    (ok result message)
+    (if (not result) (diag (format nil "Got: ~a, expected ~a" got expected)))))
 
 (defun pass (message)
   (format t "ok ~a" (incf *count*))
