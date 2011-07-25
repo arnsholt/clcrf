@@ -161,3 +161,5 @@
         while (or (not got-data) (< 0 (length line)))
         if (and (not got-data) (< 0 (length line))) do (setf got-data t)
         if got-data collect (cl-ppcre:split "\\s+" line)))
+
+; vim: ts=2:sw=2
