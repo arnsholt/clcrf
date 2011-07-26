@@ -16,3 +16,5 @@
   (is (fix-templates (list "*:1")) (list "u:1" "b:1") "fixing * templates" :test #'equalp)
   (is (length (fix-templates (list "u:1"))) 1 "fixing u templates")
   (is (length (fix-templates (list "b:1"))) 1 "fixing b templates"))
+
+; vim: ts=2:sw=2:syntax=lisp
