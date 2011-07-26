@@ -151,21 +151,23 @@
 
 (defun unigram-potential (crf observation q)
   (if (equal "u" (subseq observation 0 1))
-    (gethash (+ q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf))
+    (gethash (+ q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
     0))
 
 (defun bigram-potential (crf observation q-prime q)
   (if (equal "b" (subseq observation 0 1))
-    (gethash (+ q-prime q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf))
+    (gethash (+ q-prime q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
     0))
 
 (defun read-corpus (filename)
   (with-open-file (file filename :direction :input)
-    (read-sentence file)))
+    (loop for sentence = (read-sentence file)
+          while sentence collect sentence)))
 
 (defun read-sentence (file)
   (loop with got-data = nil
         for line = (cl-ppcre:regex-replace-all "\\A\\s+|\\s+\\z" (read-line file nil nil) "")
+        if (and (not line) (not got-data)) return nil ; Don't loop eternally at EOF.
         while (or (not got-data) (< 0 (length line)))
         if (and (not got-data) (< 0 (length line))) do (setf got-data t)
         if got-data collect (cl-ppcre:split "\\s+" line)))
