@@ -1,4 +1,3 @@
-#!/usr/bin/env sbcl --script
 (load "~/quicklisp/setup.lisp")
 (require :asdf)
 (let ((*standard-output* (make-broadcast-stream)))
