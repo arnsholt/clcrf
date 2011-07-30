@@ -129,7 +129,7 @@
         with psi   = (psi crf input)
         with Y     = (quarks-size (crf-tagset crf))
         with L     = (length input)
-        with tags  = (make-array L)
+        with back  = (make-array (list L Y))
         with prev  = (make-array Y :initial-element 0)
         with cur   = (make-array Y :initial-element 0)
         initially (loop for q below Y do (setf (aref cur q) (aref psi 0 0 q)))
@@ -143,8 +143,8 @@
              do (loop
                   for q-prime from 0 below Y
                   for potential = (+ (aref psi i q-prime q) (aref prev q-prime))
-                  if (> potential (aref cur q)) do (setf (aref cur q) potential (aref tags i) q)))
-        finally (return tags)))
+                  if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) q-prime)))
+        finally (return back)))
 
 (defun unigram-potential (crf observation q)
   (if (equal "u" (subseq observation 0 1))
