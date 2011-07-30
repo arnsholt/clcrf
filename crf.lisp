@@ -125,27 +125,24 @@
         finally (return (float mantissa))))
 
 (defun decode-crf (crf input)
-  (loop with input       = (apply-templates crf input)
-        with tagset-size = (quarks-size (crf-tagset crf))
-        with tags        = (make-array (length input))
-        with prev        = (make-array tagset-size :initial-element 0)
-        with cur         = (make-array tagset-size :initial-element 0)
-        for i from 0 below (length input)
+  (loop with input = (apply-templates crf input)
+        with psi   = (psi crf input)
+        with Y     = (quarks-size (crf-tagset crf))
+        with L     = (length input)
+        with tags  = (make-array L)
+        with prev  = (make-array Y :initial-element 0)
+        with cur   = (make-array Y :initial-element 0)
+        initially (loop for q below Y do (setf (aref cur q) (aref psi 0 0 q)))
+        for i from 1 below L
         ; Swap prev. and cur:
         do (psetf prev cur cur prev)
         ; Clear new cur. vector:
-        do (loop for i from 0 below tagset-size do (setf (aref cur i) 0))
+        do (loop for i from 0 below Y do (setf (aref cur i) 0))
         do (loop
-             for q from 0 below tagset-size
-             for unigram-potential = (reduce #'+ (mapcar (lambda (observation)
-                                                           (unigram-potential crf observation q))
-                                                         (elt input i)))
+             for q from 0 below Y
              do (loop
-                  for q-prime from 0 below tagset-size
-                  for bigram-potential = (reduce #'+ (mapcar (lambda (observation)
-                                                               (bigram-potential crf observation q-prime q))
-                                                             (elt input i)))
-                  for potential = (+ unigram-potential bigram-potential (aref prev q-prime))
+                  for q-prime from 0 below Y
+                  for potential = (+ (aref psi i q-prime q) (aref prev q-prime))
                   if (> potential (aref cur q)) do (setf (aref cur q) potential (aref tags i) q)))
         finally (return tags)))
 
@@ -158,6 +155,28 @@
   (if (equal "b" (subseq observation 0 1))
     (gethash (+ q-prime q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
     0))
+
+(defun psi (crf input)
+  (let* ((L (length input))
+         (Y (quarks-size (crf-tagset crf)))
+         (psi (make-array (list L Y Y) :initial-element 0)))
+    (loop for i below L
+          do (loop
+            for q below Y
+            for potential = (reduce #'+ (mapcar (lambda (observation)
+                                                  (unigram-potential crf observation q))
+                                                (elt input i)))
+            do (loop for q-prime below Y do (incf (aref psi i q-prime q) potential))))
+    (loop for i from 1 below L
+          do (loop
+               for q below Y
+               do (loop
+                    for q-prime below Y
+                    for potential = (reduce #'+ (mapcar (lambda (observation)
+                                                               (bigram-potential crf observation q-prime q))
+                                                             (elt input i)))
+                    do (incf (aref psi i q-prime q) potential)))
+          finally (return psi))))
 
 (defun read-corpus (filename)
   (with-open-file (file filename :direction :input)
