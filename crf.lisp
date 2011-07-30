@@ -34,6 +34,7 @@
           (quarks-size (crf-tagset crf))
           (quarks-size (crf-observations crf))))
 
+; TODO: Compute feature offsets for all observations.
 (defun read-crf (filename)
   (with-open-file (file filename :direction :input)
     (let ((templates (read file))
@@ -146,11 +147,13 @@
                   if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) q-prime)))
         finally (return back)))
 
+; TODO: Use feature offsets to find correct feature.
 (defun unigram-potential (crf observation q)
   (if (equal "u" (subseq observation 0 1))
     (gethash (+ q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
     0))
 
+; TODO: Use feature offsets to find correct feature.
 (defun bigram-potential (crf observation q-prime q)
   (if (equal "b" (subseq observation 0 1))
     (gethash (+ q-prime q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
