@@ -49,6 +49,7 @@
 (defun compile-templates (templates)
   (mapcar #'compile-template (fix-templates templates)))
 
+; TODO: Handle * templates like wapiti.
 (defun fix-templates (templates)
   (mapcan (lambda (template) (let ((first (string-downcase (subseq template 0 1))))
                                (cond ((or (equal first "u") (equal first "b")) (list template))
