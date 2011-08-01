@@ -145,7 +145,7 @@
   (let ((q-prime (aref back i q)))
     (if (> i 1)
       (append (decode-backtrace back psi q-prime (1- i)) (list (list q (aref psi i q-prime q))))
-      (list (list q (aref psi 1 q-prime q)) (list q-prime (aref psi 0 0 q-prime))))))
+      (list (list q-prime (aref psi 0 0 q-prime)) (list q (aref psi 1 q-prime q))))))
 
 (defun argmax (lambda list)
   (loop with best-val = nil
