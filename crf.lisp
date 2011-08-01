@@ -208,7 +208,7 @@
 (defun psi (crf input)
   (let* ((L (length input))
          (Y (quarks-size (crf-tagset crf)))
-         (psi (make-array (list L Y Y) :initial-element 0)))
+         (psi (make-array (list L Y Y) :initial-element 0.0 :element-type 'single-float)))
     (loop for i below L
           do (loop
             for q below Y
