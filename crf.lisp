@@ -22,10 +22,14 @@
 (defun quarks-to-int (quarks string)
   (gethash string (quarks-string-to-int quarks)))
 
+(defun quarks-to-string (quarks int)
+  (aref (quarks-int-to-string quarks) int))
+
 (defstruct crf
   templates
   tagset
   observations
+  offsets
   weights)
 
 (defmethod print-object ((crf crf) stream)
@@ -45,6 +49,21 @@
                 :tagset (quarks-from-list tagset)
                 :observations (quarks-from-list observations)
                 :weights (munge-weights weights)))))
+
+(defun compute-offsets (crf)
+  (let* ((obs-count (quarks-size (crf-observations crf)))
+         (offsets   (make-array obs-count))
+         (offset    0)
+         (Y         (quarks-size (crf-tagset crf))))
+    (loop for i below obs-count
+          for observation = (quarks-to-string (crf-observations crf) i)
+          if (equal "u" (subseq observation 0 1)) do (setf (aref offsets i) offset)
+                                                     (incf offset Y)
+          if (equal "b" (subseq observation 0 1)) do (setf (aref offsets i) offset)
+                                                     (incf offset (* Y Y))
+          if (equal "*" (subseq observation 0 1)) do (setf (aref offsets i) offset)
+                                                     (incf offset (+ Y (* Y Y))))
+    (setf (crf-offsets crf) offsets)))
 
 (defun compile-templates (templates)
   (mapcar #'compile-template (fix-templates templates)))
@@ -146,19 +165,45 @@
                   for q-prime from 0 below Y
                   for potential = (+ (aref psi i q-prime q) (aref prev q-prime))
                   if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) q-prime)))
-        finally (return back)))
+        finally (return (decode-backtrace back psi (argmax (lambda (x) x) cur) (1- L)))))
 
-; TODO: Use feature offsets to find correct feature.
+(defun decode-backtrace (back psi q i)
+  (let ((q-prime (aref back i q)))
+    (if (> i 1)
+      (append (decode-backtrace back psi q-prime (1- i)) (list (list q (aref psi i q-prime q))))
+      (list (list q (aref psi 1 q-prime q)) (list q-prime (aref psi 0 0 q-prime))))))
+
+(defun argmax (lambda list)
+  (loop with best-val = nil
+        with best-idx = nil
+        for i from 0
+        for item across list
+        for value = (funcall lambda (elt list i))
+        if (or (not best-idx) (> value best-val)) do (setf best-val value best-idx i)
+        finally (return (values best-idx best-val))))
+
+; TODO: Handle * observations.
 (defun unigram-potential (crf observation q)
-  (if (equal "u" (subseq observation 0 1))
-    (gethash (+ q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
+  (if (and (equal "u" (subseq observation 0 1)) (quarks-to-int (crf-observations crf) observation))
+    (let ((base-offset (aref (crf-offsets crf) (quarks-to-int (crf-observations crf) observation))))
+      (gethash (+ base-offset q) (crf-weights crf) 0))
     0))
 
-; TODO: Use feature offsets to find correct feature.
+; TODO: Handle * observations.
 (defun bigram-potential (crf observation q-prime q)
-  (if (equal "b" (subseq observation 0 1))
-    (gethash (+ q-prime q (quarks-to-int (crf-observations crf) observation)) (crf-weights crf) 0)
+  (if (and (equal "b" (subseq observation 0 1)) (quarks-to-int (crf-observations crf) observation))
+    (let ((base-offset (aref (crf-offsets crf) (quarks-to-int (crf-observations crf) observation)))
+          (bigram-offset (+ (* q-prime (quarks-size (crf-tagset crf))) q)))
+      (gethash (+ base-offset bigram-offset) (crf-weights crf) 0))
     0))
+
+(defun annotate-tags (crf psi tags)
+  (loop with quarks = (mapcar (lambda (x) (quarks-to-int (crf-tagset crf) x)) tags)
+        with prev = 0
+        for cur in quarks
+        for i from 0
+        for tag in tags
+        collect (list tag (aref psi i prev cur))))
 
 (defun psi (crf input)
   (let* ((L (length input))
