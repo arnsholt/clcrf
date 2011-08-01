@@ -158,29 +158,51 @@
 
 ; TODO: Handle * observations.
 (defun unigram-potential (crf observation q)
-  (if (and (equal "u" (subseq observation 0 1)) (quarks-to-int (crf-observations crf) observation))
-    (let ((base-offset (aref (crf-offsets crf) (quarks-to-int (crf-observations crf) observation))))
-      (gethash (+ base-offset q) (crf-weights crf) 0))
-    0))
+  (gethash (+ observation q) (crf-weights crf) 0.0))
+
+(defun unigram-observations (crf input)
+  (mapcar (lambda (token) (mapcar (lambda (observation)
+                                    (aref (crf-offsets crf) (quarks-to-int (crf-observations crf) observation)))
+                                  (remove-if-not (lambda (observation)
+                                                   (and (or (equal (subseq observation 0 1) "u")
+                                                            (equal (subseq observation 0 1) "*"))
+                                                        (quarks-to-int (crf-observations crf) observation)))
+                                                 token)))
+          input))
 
 ; TODO: Handle * observations.
 (defun bigram-potential (crf observation q-prime q)
-  (if (and (equal "b" (subseq observation 0 1)) (quarks-to-int (crf-observations crf) observation))
-    (let ((base-offset (aref (crf-offsets crf) (quarks-to-int (crf-observations crf) observation)))
-          (bigram-offset (+ (* q-prime (quarks-size (crf-tagset crf))) q)))
-      (gethash (+ base-offset bigram-offset) (crf-weights crf) 0))
-    0))
+  (gethash (+ observation (* q-prime (quarks-size (crf-tagset crf))) q) (crf-weights crf) 0.0))
+
+(defun bigram-observations (crf input)
+  (mapcar (lambda (token) (mapcar (lambda (observation)
+                                    ;; The bigram features of * observations
+                                    ;; are packed after the unigram ones, so
+                                    ;; we need to offset the offset by the
+                                    ;; size of the tagset.
+                                    (+ (if (equal (subseq observation 0 1) "*")
+                                         (quarks-size (crf-tagset crf))
+                                         0)
+                                       (aref (crf-offsets crf) (quarks-to-int (crf-observations crf) observation))))
+                                  (remove-if-not (lambda (observation)
+                                                   (and (or (equal (subseq observation 0 1) "b")
+                                                            (equal (subseq observation 0 1) "*"))
+                                                        (quarks-to-int (crf-observations crf) observation)))
+                                                 token)))
+          input))
 
 (defun psi (crf input)
   (let* ((L (length input))
          (Y (quarks-size (crf-tagset crf)))
-         (psi (make-array (list L Y Y) :initial-element 0.0 :element-type 'single-float)))
+         (psi (make-array (list L Y Y) :initial-element 0.0 :element-type 'single-float))
+         (unigram-observations (unigram-observations crf input))
+         (bigram-observations  (bigram-observations  crf input)))
     (loop for i below L
           do (loop
             for q below Y
             for potential = (reduce #'+ (mapcar (lambda (observation)
                                                   (unigram-potential crf observation q))
-                                                (elt input i)))
+                                                (elt unigram-observations i)))
             do (loop for q-prime below Y do (incf (aref psi i q-prime q) potential))))
     (loop for i from 1 below L
           do (loop
@@ -189,7 +211,7 @@
                     for q-prime below Y
                     for potential = (reduce #'+ (mapcar (lambda (observation)
                                                                (bigram-potential crf observation q-prime q))
-                                                             (elt input i)))
+                                                             (elt bigram-observations i)))
                     do (incf (aref psi i q-prime q) potential)))
           finally (return psi))))
 
