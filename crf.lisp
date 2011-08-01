@@ -13,7 +13,6 @@
           (quarks-size (crf-tagset crf))
           (quarks-size (crf-observations crf))))
 
-; TODO: Compute feature offsets for all observations.
 (defun read-crf (filename)
   (with-open-file (file filename :direction :input)
     (let ((templates (read file))
@@ -171,14 +170,6 @@
           (bigram-offset (+ (* q-prime (quarks-size (crf-tagset crf))) q)))
       (gethash (+ base-offset bigram-offset) (crf-weights crf) 0))
     0))
-
-(defun annotate-tags (crf psi tags)
-  (loop with quarks = (mapcar (lambda (x) (quarks-to-int (crf-tagset crf) x)) tags)
-        with prev = 0
-        for cur in quarks
-        for i from 0
-        for tag in tags
-        collect (list tag (aref psi i prev cur))))
 
 (defun psi (crf input)
   (let* ((L (length input))
