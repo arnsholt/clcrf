@@ -47,6 +47,7 @@
 ; TODO: Handle casefolding for %X[row,col].
 ; TODO: Handle absolute row offsets.
 ; TODO: Handle %t and %m. What does %m insert when there is no match?
+; TODO: Detect invalid templates and raise condition.
 (defun compile-template (template &key (compile-p t))
   (loop
     with start = 0
