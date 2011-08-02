@@ -149,7 +149,6 @@
         if (or (not best-idx) (> value best-val)) do (setf best-val value best-idx i)
         finally (return (values best-idx best-val))))
 
-; TODO: Handle * observations.
 (defun unigram-potential (crf observation q)
   (gethash (+ observation q) (crf-weights crf) 0.0))
 
@@ -163,7 +162,6 @@
                                                  token)))
           input))
 
-; TODO: Handle * observations.
 (defun bigram-potential (crf observation q-prime q)
   (gethash (+ observation (* q-prime (quarks-size (crf-tagset crf))) q) (crf-weights crf) 0.0))
 
