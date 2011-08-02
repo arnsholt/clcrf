@@ -42,17 +42,7 @@
     (setf (crf-offsets crf) offsets)))
 
 (defun compile-templates (templates)
-  (mapcar #'compile-template (fix-templates templates)))
-
-; TODO: Handle * templates like wapiti.
-(defun fix-templates (templates)
-  (mapcan (lambda (template) (let ((first (string-downcase (subseq template 0 1))))
-                               (cond ((or (equal first "u") (equal first "b")) (list template))
-                                     ((equal first "*") (list
-                                                          (concatenate 'string "u" (subseq template 1))
-                                                          (concatenate 'string "b" (subseq template 1))))
-                                     (t (error (format nil "Bad template type ~a" first))))))
-          templates))
+  (mapcar #'compile-template templates))
 
 ; TODO: Handle casefolding for %X[row,col].
 ; TODO: Handle absolute row offsets.
