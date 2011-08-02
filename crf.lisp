@@ -54,7 +54,7 @@
      and format = ""
      and arguments = ()
     for (match-start match-end reg-start reg-end) = (multiple-value-list
-                                                      (cl-ppcre:scan "%x\\[([+-]?\\d+),([+-]?\\d+)\\]" template :start start))
+                                                      (cl-ppcre:scan "%x\\[([+-]?\\d+),(\\d+)\\]" template :start start))
     while match-start
     do (setf format (concatenate 'string format (subseq template start match-start) "~a"))
        (setf start match-end)
