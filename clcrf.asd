@@ -3,7 +3,8 @@
   :version 1
   :author "Arne Skjærholt <arnsholt@gmail.com"
   :components ((:file "clcrf")
-               (:file "crf" :depends-on ("clcrf" "quarks"))
+               (:file "corpus" :depends-on ("clcrf"))
+               (:file "crf" :depends-on ("clcrf" "quarks" "corpus"))
                (:file "quarks" :depends-on ("clcrf"))
                (:file "t/test" :depends-on ("crf")))
   :depends-on ("cl-ppcre"))

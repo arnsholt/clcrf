@@ -113,7 +113,7 @@
         finally (return (float mantissa))))
 
 (defun decode-crf (crf input)
-  (loop with input = (apply-templates crf input)
+  (loop with input = (apply-templates crf (sentence-as-list input))
         with psi   = (psi crf input)
         with Y     = (quarks-size (crf-tagset crf))
         with L     = (length input)
@@ -205,18 +205,5 @@
                                                              (elt bigram-observations i)))
                     do (incf (aref psi i q-prime q) potential)))
           finally (return psi))))
-
-(defun read-corpus (filename)
-  (with-open-file (file filename :direction :input)
-    (loop for sentence = (read-sentence file)
-          while sentence collect sentence)))
-
-(defun read-sentence (file)
-  (loop with got-data = nil
-        for line = (cl-ppcre:regex-replace-all "\\A\\s+|\\s+\\z" (read-line file nil nil) "")
-        if (and (not line) (not got-data)) return nil ; Don't loop eternally at EOF.
-        while (or (not got-data) (< 0 (length line)))
-        if (and (not got-data) (< 0 (length line))) do (setf got-data t)
-        if got-data collect (cl-ppcre:split "\\s+" line)))
 
 ; vim: ts=2:sw=2
