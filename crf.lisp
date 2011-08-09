@@ -118,6 +118,9 @@
         with Y     = (quarks-size (crf-tagset crf))
         with L     = (length input)
         with back  = (make-array (list L Y))
+        ; XXX: Maybe :initial-element (and the clearing out below) should use
+        ; most-negative-single-float instead. If all possible potentials are
+        ; negative, strange things will probably happen...
         with prev  = (make-array Y :initial-element 0)
         with cur   = (make-array Y :initial-element 0)
         initially (loop for q below Y do (setf (aref cur q) (aref psi 0 0 q)))
