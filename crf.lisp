@@ -221,7 +221,9 @@
           with Y = (quarks-size (crf-tagset crf))
           with psi = (psi crf seq :exp t)
           with alpha = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
+          with scales = (make-array L :element-type 'single-float)
           initially (loop for q below Y do (setf (aref alpha 0 q) (aref psi 0 0 q)))
+                    (setf (aref scales 0) (scale alpha 0))
           for i from 1 below L
           do (loop
                for q below Y
@@ -229,6 +231,18 @@
                             for q-prime below Y
                             summing (* (aref alpha (1- i) q-prime) (aref psi i q-prime q)))
                do (setf (aref alpha i q) prob))
-          finally (return alpha)))
+             (setf (aref scales i) (scale alpha i))
+          finally (return (values alpha scales))))
+
+(defun scale (matrix index)
+  (let ((dimen (array-dimension matrix 1))
+        (sum 0.0))
+    (loop for i below dimen
+          do (incf sum (aref matrix index i)))
+    (loop with scale = (/ 1 sum)
+          for i below dimen
+          for val = (aref matrix index i)
+          do (setf (aref matrix index i) (* val scale))
+          finally (return scale))))
 
 ; vim: ts=2:sw=2
