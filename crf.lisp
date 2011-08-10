@@ -185,7 +185,7 @@
                                                  token)))
           input))
 
-(defun psi (crf input &key (exp nil))
+(defun psi (crf input)
   (let* ((L (length input))
          (Y (quarks-size (crf-tagset crf)))
          (psi (make-array (list L Y Y) :initial-element 0.0 :element-type 'single-float))
@@ -206,20 +206,25 @@
                     for potential = (reduce #'+ (mapcar (lambda (observation)
                                                                (bigram-potential crf observation q-prime q))
                                                              (elt bigram-observations i)))
-                    do (incf (aref psi i q-prime q) potential))))
-    (if exp
-      (loop for i below L
-            do (loop
-                 for q below Y
-                 do (loop
-                      for q-prime below Y
-                      do (setf (aref psi i q-prime q) (exp (aref psi i q-prime q)))))))
-    psi))
+                    do (incf (aref psi i q-prime q) potential)))
+          finally (return psi))))
+
+(defun epsi (crf input)
+  (loop with psi = (psi crf input)
+        with L = (length input)
+        with Y = (quarks-size (crf-tagset crf))
+        for i below L
+        do (loop
+             for q below Y
+             do (loop
+                  for q-prime below Y
+                  do (setf (aref psi i q-prime q) (exp (aref psi i q-prime q)))))
+        finally (return psi)))
 
 (defun alpha (crf seq)
     (loop with L = (length seq)
           with Y = (quarks-size (crf-tagset crf))
-          with psi = (psi crf seq :exp t)
+          with psi = (epsi crf seq)
           with alpha = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
           with scales = (make-array L :element-type 'single-float)
           initially (loop for q below Y do (setf (aref alpha 0 q) (aref psi 0 0 q)))
