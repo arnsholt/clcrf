@@ -9,4 +9,4 @@
                (:file "t/test" :depends-on ("clcrf")))
   :depends-on ("cl-ppcre"))
 
-; vim: ts=2:sw=2:syntax=lisp
+; vim: ts=2:sw=2:sts=2:syntax=lisp

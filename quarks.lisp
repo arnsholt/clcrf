@@ -21,3 +21,5 @@
 
 (defun quarks-to-string (quarks int)
   (aref (quarks-int-to-string quarks) int))
+
+; vim: ts=2:sw=2:sts=2

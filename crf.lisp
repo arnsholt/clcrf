@@ -245,4 +245,4 @@
           do (setf (aref matrix index i) (* val scale))
           finally (return scale))))
 
-; vim: ts=2:sw=2
+; vim: ts=2:sw=2:sts=2
