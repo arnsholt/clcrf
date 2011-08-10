@@ -221,6 +221,9 @@
                   do (setf (aref psi i q-prime q) (exp (aref psi i q-prime q)))))
         finally (return psi)))
 
+; XXX: alpha() and beta() recompute their own potential matrices. This is
+; probably wasteful in the long run since both will have to be called for the
+; forward-backward computation.
 (defun alpha (crf seq)
     (loop with L = (length seq)
           with Y = (quarks-size (crf-tagset crf))
