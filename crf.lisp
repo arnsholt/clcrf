@@ -239,6 +239,22 @@
              (setf (aref scales i) (scale alpha i))
           finally (return (values alpha scales))))
 
+(defun beta (crf seq)
+  (loop with L = (length seq)
+          with Y = (quarks-size (crf-tagset crf))
+          with psi = (epsi crf seq)
+          with beta = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
+          initially (loop for q below Y do (setf (aref beta (1- L) q) (/ 1.0 Y)))
+          for i from (1- L) above 0
+          do (loop
+               for q below Y
+               for prob = (loop
+                            for q-prime below Y
+                            summing (* (aref beta i q) (aref psi i q-prime q)))
+               do (setf (aref beta (1- i) q) prob))
+             (scale beta (1- i))
+          finally (return beta)))
+
 (defun scale (matrix index)
   (let ((dimen (array-dimension matrix 1))
         (sum 0.0))
