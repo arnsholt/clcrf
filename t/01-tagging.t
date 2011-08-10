@@ -10,7 +10,7 @@
     (> 1.0e-6 (abs (- 1(/ x y))))  )
 
 (test 22
-  (let* ((sequence (first (read-corpus "t/test.cor")))
+  (let* ((sequence (corpus-sentence (read-corpus "t/test.cor") 0))
          (crf (read-crf "t/test.crf"))
          (gold '(("-s---fb--i" 10.056463)
                  ("3spia----i" 12.653277)
