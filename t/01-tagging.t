@@ -35,7 +35,7 @@
                  ("3ppip----i" 11.642814)))
          (tagged (decode-crf crf sequence)))
   (is (mapcar (lambda (tag) (quarks-to-string (crf-tagset crf) tag)) (mapcar #'first tagged))
-              (mapcar #'first gold) "tagging" :test #'equalp)
-  (mapcar (lambda (x y) (ok (is-almost (second x) (second y)) "tagged/gold ratio")) tagged gold)))
+              (mapcar #'first gold) "tagging consistent with wapiti" :test #'equalp)
+  (mapcar (lambda (x y) (ok (is-almost (second x) (second y)) "potential consistent with wapiti")) tagged gold)))
 
 ; vim: ts=2:sw=2:syntax=lisp
