@@ -10,7 +10,7 @@
     (> 1.0e-6 (abs (- 1(/ x y))))  )
 
 (test 22
-  (let* ((sequence (first (read-corpus "t/test.cor")))
+  (let* ((sequence (corpus-sentence (read-corpus "t/test.cor") 0))
          (crf (read-crf "t/test.crf"))
          (gold '(("-s---fb--i" 10.056463)
                  ("3spia----i" 12.653277)
@@ -35,7 +35,7 @@
                  ("3ppip----i" 11.642814)))
          (tagged (decode-crf crf sequence)))
   (is (mapcar (lambda (tag) (quarks-to-string (crf-tagset crf) tag)) (mapcar #'first tagged))
-              (mapcar #'first gold) "tagging" :test #'equalp)
-  (mapcar (lambda (x y) (ok (is-almost (second x) (second y)) "tagged/gold ratio")) tagged gold)))
+              (mapcar #'first gold) "tagging consistent with wapiti" :test #'equalp)
+  (mapcar (lambda (x y) (ok (is-almost (second x) (second y)) "potential consistent with wapiti")) tagged gold)))
 
-; vim: ts=2:sw=2:syntax=lisp
+; vim: ts=2:sw=2:sts=2:syntax=lisp

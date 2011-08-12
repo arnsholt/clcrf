@@ -112,12 +112,15 @@
         do (incf mantissa (/ numerator denominator))
         finally (return (float mantissa))))
 
-(defun decode-crf (crf input)
-  (loop with input = (apply-templates crf input)
-        with psi   = (psi crf input)
+(defun decode-crf (crf input &key posterior)
+  (loop with input = (apply-templates crf (sentence-as-list input))
+        with psi   = (if posterior (posterior-psi crf input) (psi crf input))
         with Y     = (quarks-size (crf-tagset crf))
         with L     = (length input)
         with back  = (make-array (list L Y))
+        ; XXX: Maybe :initial-element (and the clearing out below) should use
+        ; most-negative-single-float instead. If all possible potentials are
+        ; negative, strange things will probably happen...
         with prev  = (make-array Y :initial-element 0)
         with cur   = (make-array Y :initial-element 0)
         initially (loop for q below Y do (setf (aref cur q) (aref psi 0 0 q)))
@@ -130,7 +133,8 @@
              for q from 0 below Y
              do (loop
                   for q-prime from 0 below Y
-                  for potential = (+ (aref psi i q-prime q) (aref prev q-prime))
+                  for potential = (if posterior (* (aref psi i q-prime q) (aref prev q-prime))
+                                                (+ (aref psi i q-prime q) (aref prev q-prime)))
                   if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) q-prime)))
         finally (return (decode-backtrace back psi (argmax (lambda (x) x) cur) (1- L)))))
 
@@ -206,17 +210,80 @@
                     do (incf (aref psi i q-prime q) potential)))
           finally (return psi))))
 
-(defun read-corpus (filename)
-  (with-open-file (file filename :direction :input)
-    (loop for sentence = (read-sentence file)
-          while sentence collect sentence)))
+(defun epsi (crf input)
+  (loop with psi = (psi crf input)
+        with L = (length input)
+        with Y = (quarks-size (crf-tagset crf))
+        for i below L
+        do (loop
+             for q below Y
+             do (loop
+                  for q-prime below Y
+                  do (setf (aref psi i q-prime q) (exp (aref psi i q-prime q)))))
+        finally (return psi)))
 
-(defun read-sentence (file)
-  (loop with got-data = nil
-        for line = (cl-ppcre:regex-replace-all "\\A\\s+|\\s+\\z" (read-line file nil nil) "")
-        if (and (not line) (not got-data)) return nil ; Don't loop eternally at EOF.
-        while (or (not got-data) (< 0 (length line)))
-        if (and (not got-data) (< 0 (length line))) do (setf got-data t)
-        if got-data collect (cl-ppcre:split "\\s+" line)))
+(defun posterior-psi (crf input)
+  (loop with L = (length input)
+        with Y = (quarks-size (crf-tagset crf))
+        with psi = (make-array (list L Y Y) :element-type 'single-float)
+        with alpha = (alpha crf input)
+        with beta = (beta crf input)
+        for i below L
+        do (loop
+             with z = (/ 1.0 (loop for q below Y summing (* (aref alpha i q) (aref beta i q))))
+             for q below Y
+             for posterior = (* (aref alpha i q) (aref beta i q) z)
+             do (loop
+                  for q-prime below Y
+                  do (setf (aref psi i q-prime q) posterior)))
+        finally (return psi)))
 
-; vim: ts=2:sw=2
+; XXX: alpha() and beta() recompute their own potential matrices. This is
+; probably wasteful in the long run since both will have to be called for the
+; forward-backward computation.
+(defun alpha (crf seq)
+    (loop with L = (length seq)
+          with Y = (quarks-size (crf-tagset crf))
+          with psi = (epsi crf seq)
+          with alpha = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
+          with scales = (make-array L :element-type 'single-float)
+          initially (loop for q below Y do (setf (aref alpha 0 q) (aref psi 0 0 q)))
+                    (setf (aref scales 0) (scale alpha 0))
+          for i from 1 below L
+          do (loop
+               for q below Y
+               for prob = (loop
+                            for q-prime below Y
+                            summing (* (aref alpha (1- i) q-prime) (aref psi i q-prime q)))
+               do (setf (aref alpha i q) prob))
+             (setf (aref scales i) (scale alpha i))
+          finally (return (values alpha scales))))
+
+(defun beta (crf seq)
+  (loop with L = (length seq)
+          with Y = (quarks-size (crf-tagset crf))
+          with psi = (epsi crf seq)
+          with beta = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
+          initially (loop for q below Y do (setf (aref beta (1- L) q) (/ 1.0 Y)))
+          for i from (1- L) above 0
+          do (loop
+               for q-prime below Y
+               for prob = (loop
+                            for q below Y
+                            summing (* (aref beta i q) (aref psi i q-prime q)))
+               do (setf (aref beta (1- i) q-prime) prob))
+             (scale beta (1- i))
+          finally (return beta)))
+
+(defun scale (matrix index)
+  (let ((dimen (array-dimension matrix 1))
+        (sum 0.0))
+    (loop for i below dimen
+          do (incf sum (aref matrix index i)))
+    (loop with scale = (/ 1.0 sum)
+          for i below dimen
+          for val = (aref matrix index i)
+          do (setf (aref matrix index i) (* val scale))
+          finally (return scale))))
+
+; vim: ts=2:sw=2:sts=2
