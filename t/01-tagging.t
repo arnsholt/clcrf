@@ -38,4 +38,4 @@
               (mapcar #'first gold) "tagging consistent with wapiti" :test #'equalp)
   (mapcar (lambda (x y) (ok (is-almost (second x) (second y)) "potential consistent with wapiti")) tagged gold)))
 
-; vim: ts=2:sw=2:syntax=lisp
+; vim: ts=2:sw=2:sts=2:syntax=lisp

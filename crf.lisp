@@ -112,9 +112,9 @@
         do (incf mantissa (/ numerator denominator))
         finally (return (float mantissa))))
 
-(defun decode-crf (crf input)
+(defun decode-crf (crf input &key posterior)
   (loop with input = (apply-templates crf (sentence-as-list input))
-        with psi   = (psi crf input)
+        with psi   = (if posterior (posterior-psi crf input) (psi crf input))
         with Y     = (quarks-size (crf-tagset crf))
         with L     = (length input)
         with back  = (make-array (list L Y))
@@ -133,7 +133,8 @@
              for q from 0 below Y
              do (loop
                   for q-prime from 0 below Y
-                  for potential = (+ (aref psi i q-prime q) (aref prev q-prime))
+                  for potential = (if posterior (* (aref psi i q-prime q) (aref prev q-prime))
+                                                (+ (aref psi i q-prime q) (aref prev q-prime)))
                   if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) q-prime)))
         finally (return (decode-backtrace back psi (argmax (lambda (x) x) cur) (1- L)))))
 
@@ -221,6 +222,22 @@
                   do (setf (aref psi i q-prime q) (exp (aref psi i q-prime q)))))
         finally (return psi)))
 
+(defun posterior-psi (crf input)
+  (loop with L = (length input)
+        with Y = (quarks-size (crf-tagset crf))
+        with psi = (make-array (list L Y Y) :element-type 'single-float)
+        with alpha = (alpha crf input)
+        with beta = (beta crf input)
+        for i below L
+        do (loop
+             with z = (/ 1.0 (loop for q below Y summing (* (aref alpha i q) (aref beta i q))))
+             for q below Y
+             for posterior = (* (aref alpha i q) (aref beta i q) z)
+             do (loop
+                  for q-prime below Y
+                  do (setf (aref psi i q-prime q) posterior)))
+        finally (return psi)))
+
 ; XXX: alpha() and beta() recompute their own potential matrices. This is
 ; probably wasteful in the long run since both will have to be called for the
 ; forward-backward computation.
@@ -250,11 +267,11 @@
           initially (loop for q below Y do (setf (aref beta (1- L) q) (/ 1.0 Y)))
           for i from (1- L) above 0
           do (loop
-               for q below Y
+               for q-prime below Y
                for prob = (loop
-                            for q-prime below Y
+                            for q below Y
                             summing (* (aref beta i q) (aref psi i q-prime q)))
-               do (setf (aref beta (1- i) q) prob))
+               do (setf (aref beta (1- i) q-prime) prob))
              (scale beta (1- i))
           finally (return beta)))
 
@@ -263,7 +280,7 @@
         (sum 0.0))
     (loop for i below dimen
           do (incf sum (aref matrix index i)))
-    (loop with scale = (/ 1 sum)
+    (loop with scale = (/ 1.0 sum)
           for i below dimen
           for val = (aref matrix index i)
           do (setf (aref matrix index i) (* val scale))

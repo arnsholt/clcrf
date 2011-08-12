@@ -12,4 +12,4 @@
     (is (funcall template sequence 0) "u:_X-1/c2" "template application underflow")
     (is (funcall template sequence 2) "u:a2/_X+1" "template application overflow")))
 
-; vim: ts=2:sw=2:syntax=lisp
+; vim: ts=2:sw=2:sts=2:syntax=lisp
