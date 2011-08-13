@@ -1,6 +1,6 @@
 (in-package :clcrf)
 
-(defun lbfgs (gradient &key (owl nil) initial-x)
+(defun lbfgs (gradient &key (owl nil) initial-x (history 5))
   )
 
 (defun line-search ()
