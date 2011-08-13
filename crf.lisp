@@ -52,26 +52,25 @@
   (loop
     with start = 0
      and format = ""
-     and arguments = ()
     for (match-start match-end reg-start reg-end) = (multiple-value-list
                                                       (cl-ppcre:scan "%x\\[([+-]?\\d+),(\\d+)\\]" template :start start))
     while match-start
+    for first-start  = (aref reg-start 0)
+    for first-end    = (aref reg-end   0)
+    for second-start = (aref reg-start 1)
+    for second-end   = (aref reg-end   1)
     do (setf format (concatenate 'string format (subseq template start match-start) "~a"))
        (setf start match-end)
-       (let ((first-start  (aref reg-start 0))
-             (first-end    (aref reg-end   0))
-             (second-start (aref reg-start 1))
-             (second-end   (aref reg-end   1)))
-         (setf arguments (cons (list 'get-relative (parse-integer template :start first-start  :end first-end)
-                                                   (parse-integer template :start second-start :end second-end)
-                                                   'sequence 'position)
-                             arguments)))
+    collecting (list 'get-relative (parse-integer template :start first-start  :end first-end)
+                                   (parse-integer template :start second-start :end second-end)
+                                   'sequence 'position)
+    into arguments
     finally (setf format (concatenate 'string format (subseq template start)))
             (return (let ((lambda
                             `(lambda (sequence position)
                                (declare (ignorable sequence)
                                         (ignorable position))
-                               (format nil ,format ,@(reverse arguments)))))
+                               (format nil ,format ,@arguments))))
                       (if compile-p
                         (compile nil lambda)
                         lambda)))))
