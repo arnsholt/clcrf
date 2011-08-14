@@ -13,13 +13,13 @@
         summing (* x y)))
 
 (defun outer-product (a b)
-  (make-array (list (length a) (length b))
+  (make-array (list (length a) (length b)) :element-type 'single-float
               :initial-contents (map 'list (lambda (x) (map 'list (lambda (y) (* x y)) b)) a)))
 
 (defun transpose (m)
   (loop with rows = (array-dimension m 0)
         with columns = (array-dimension m 1)
-        with transpose = (make-array (list columns rows))
+        with transpose = (make-array (list columns rows) :element-type 'single-float)
         for row below rows
         do (loop
              for column below columns
@@ -31,7 +31,7 @@
   (loop with rows    = (array-dimension a 0) ; No. of rows in result
         with columns = (array-dimension b 1) ; No. of cols in result
         with inner   = (array-dimension a 1) ; Dimension of "inner" edges of the matrices
-        with product = (make-array (list rows columns))
+        with product = (make-array (list rows columns) :element-type 'single-float)
         for row below rows
         do (loop
              for column below columns
@@ -42,7 +42,7 @@
         finally (return product)))
 
 (defun unit (dimen)
-  (loop with m = (make-array (list dimen dimen))
+  (loop with m = (make-array (list dimen dimen) :element-type 'single-float)
         for i below dimen
         do (setf (aref m i i) 1.0)
         finally (return m)))
