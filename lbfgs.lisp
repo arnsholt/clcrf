@@ -26,6 +26,9 @@
              do (setf (aref transpose column row) (aref m row column)))
         finally (return transpose)))
 
+(defun prod-s-v (s v)
+  (map 'vector (lambda (x) (* s x)) v))
+
 ; XXX: Will not complain if the matrices are incompatible.
 (defun prod-m-m (a b)
   (loop with rows    = (array-dimension a 0) ; No. of rows in result
