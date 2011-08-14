@@ -41,6 +41,18 @@
              do (setf (aref product row column) value))
         finally (return product)))
 
+; XXX: Will not complain if the matrix and vector are incompatible.
+(defun prod-m-v (m v)
+  (loop with length  = (array-dimension m 0)
+        with inner   = (array-dimension m 1)
+        with product = (make-array length :element-type 'single-float)
+        for i below length
+        for value = (loop
+                      for j below inner
+                      sum (* (aref m i j) (aref v j)))
+        do (setf (aref product i) value)
+        finally (return product)))
+
 (defun unit (dimen)
   (loop with m = (make-array (list dimen dimen) :element-type 'single-float)
         for i below dimen
