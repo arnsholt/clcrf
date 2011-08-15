@@ -1,10 +1,8 @@
 (in-package :clcrf)
 
-(defun lbfgs (gradient &key (owl nil) initial-x (history 5))
-  )
-
-(defun line-search ()
-  )
+(defun lbfgs (gradient &key dimen)
+  (loop with H0 = (unit dimen)
+        while nil))
 
 ; XXX: Will not complain if given vectors of different lengths.
 (defun inner-product (a b)
