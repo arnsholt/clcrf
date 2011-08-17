@@ -59,3 +59,5 @@
         for i below dimen
         do (setf (aref m i i) 1.0)
         finally (return m)))
+
+; vim: ts=2:sw=2:sts=2:syntax=lisp
