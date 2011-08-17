@@ -24,6 +24,9 @@
              do (setf (aref transpose column row) (aref m row column)))
         finally (return transpose)))
 
+(defun sub-v-v (a b)
+  (map 'vector (lambda (x y) (- x y)) a b))
+
 (defun prod-s-v (s v)
   (map 'vector (lambda (x) (* s x)) v))
 
