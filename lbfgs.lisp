@@ -1,8 +1,35 @@
 (in-package :clcrf)
 
-(defun lbfgs (gradient &key dimen)
+(defun lbfgs (gradient &key dimen (history 5))
   (loop with H0 = (unit dimen)
-        while nil))
+        with x-history = (mk-circular history)
+        with g-history = (mk-circular history)
+        with x = (make-array dimen :initial-element 1.0 :element-type 'single-float)
+        while nil
+        for k from 0
+        for (y g) = (multiple-value-list (funcall gradient x))
+        for d = (find-direction k H0 x-history g g-history history)
+        for alpha = (line-search) ; TODO
+        ))
+
+(defun find-direction (k H0 x-history g g-history history)
+  (loop with alpha = (make-array history)
+        with incr  = (if (<= k history) 0 (- k history))
+        with bound = (if (<= k history) k history)
+        for q = (loop
+                  for i from (1- bound) downto 0
+                  for j   = (+ i incr)
+                  for q   = g then (sub-v-v q (prod-s-v alpha (cref g-history j)))
+                  for rho = (/ 1 (inner-product (cref g-history j) (cref x-history j)))
+                  for a   = (* rho (inner-product (cref x-history j) q))
+                  do (setf (aref alpha i) a)
+                  finally (return q))
+        for i below history
+        for j    = (+ i incr)
+        for r    = (prod-m-v H0 q) then (add-m-m r (outer-product (cref g-history j) (sub-v-v (aref alpha i) beta)))
+        for rho  = (/ 1 (inner-product (cref g-history j) (cref x-history j)))
+        for beta = (* rho (inner-product (cref g-history j) r))
+            ))
 
 ; XXX: Will not complain if given vectors of different lengths.
 (defun inner-product (a b)
@@ -24,9 +51,20 @@
              do (setf (aref transpose column row) (aref m row column)))
         finally (return transpose)))
 
+; XXX: Will not complain if the matrices are incompatible.
+(defun add-m-m (a b)
+  (loop with sum = (make-array (array-dimensions a) :element-type 'single-float)
+        for i below (array-dimension a 0)
+        do (loop
+             for j below (array-dimension a 1)
+             do (setf (aref sum i j) (+ (aref a i j) (aref b i j))))
+        finally (return sum)))
+
+; XXX: Will not complain if given vectors of different lengths.
 (defun sub-v-v (a b)
   (map 'vector (lambda (x y) (- x y)) a b))
 
+; XXX: Will not complain if given vectors of different lengths.
 (defun prod-s-v (s v)
   (map 'vector (lambda (x) (* s x)) v))
 
