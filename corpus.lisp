@@ -20,6 +20,27 @@
 (defun corpus-sentence (corpus num)
   (aref (corpus-sentences corpus) num))
 
+(defun corpus-stats (corpus crf)
+  (loop with total-uni = 0
+        with total-bi  = 0
+        with sentences = 0
+        for sentence across (corpus-sentences corpus)
+        for as-list  = (apply-templates crf (sentence-as-list sentence))
+        for unigrams = (uniques (unigram-observations crf as-list))
+        for bigrams  = (uniques (bigram-observations crf as-list))
+        do (incf total-uni (length unigrams))
+           (incf total-bi  (length bigrams))
+           (incf sentences)
+        finally (format t "~a sentences, ~,2f unigrams (~,2f features) and ~,2f bigrams per sentence."
+                        sentences (/ total-uni sentences) (* (/ total-uni sentences) (quarks-size (crf-tagset crf)))
+                        (/ total-bi sentences))))
+
+(defun uniques (seq)
+  (loop with max = -1
+        for idx in (sort (mapcan (lambda (x) x) seq) #'<)
+        if (> idx max) do (setf max idx)
+                      and collect idx))
+
 (defun sentence-as-list (sentence)
   (map 'list #'observation-observations (sentence-observations sentence)))
 
