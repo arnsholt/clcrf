@@ -5,12 +5,15 @@
         with x-history = (mk-circular history)
         with g-history = (mk-circular history)
         with x = (make-array dimen :initial-element 1.0 :element-type 'single-float)
-        while nil
+        with (y g) = (multiple-value-list (funcall gradient x))
         for k from 0
-        for (y g) = (multiple-value-list (funcall gradient x))
         for d = (find-direction k H0 x-history g g-history history)
-        for alpha = (line-search gradient d x y g)
-        ))
+        for (alpha x-prime g-prime) = (multiple-value-list (line-search gradient d x y g))
+        do (setf (cref x-history k) (sub-v-v x-prime x)
+                 (cref g-history k) (sub-v-v g-prime g)
+                 x x-prime
+                 g g-prime)
+           (format t "L-BFGS: alpha: ~a; next x: ~a; next g: ~a~%" alpha x-prime g-prime)))
 
 (defun find-direction (k H0 x-history g g-history history)
   (let* ((incr  (if (<= k history) 0 (- k history)))
@@ -21,7 +24,7 @@
           for i from (1- bound) downto 0
           for j   = (+ i incr)
           for rho = (/ 1 (inner-product (cref g-history j) (cref x-history j)))
-          for a   = (* rho (inner-product (cref x-history j) q))
+          for a   = (* rho (inner-product (cref x-history j) (aref q (1+ i))))
           do (setf (aref alpha i) a
                    (aref q     i) (sub-v-v (aref q (1+ i)) (prod-s-v a (cref g-history j)))))
     (loop with r = (make-array (1+ bound))
@@ -29,18 +32,18 @@
           for i below bound
           for j    = (+ i incr)
           for rho  = (/ 1 (inner-product (cref g-history j) (cref x-history j)))
-          for beta = (* rho (inner-product (cref g-history j) q))
-          do (setf (aref r (1+ i)) (add-m-m (aref r i) (outer-product (cref x-history j)
-                                                                      (sub-v-v (aref alpha i) beta))))
-          finally (return (aref r bound)))))
+          for beta = (* rho (inner-product (cref g-history j) (aref r i)))
+          do (setf (aref r (1+ i)) (add-v-v (aref r i) (prod-s-v (- (aref alpha i) beta) (cref x-history j))))
+          finally (return (prod-s-v -1.0 (aref r bound))))))
 
 (defun line-search (gradient direction x y g)
   (loop with g-times-d = (inner-product g direction)
-        for alpha = 1 then (* 0.5 alpha)
-        for (y-prime g-prime) = (multiple-value-list (funcall gradient (add-v-v x (prod-s-v alpha direction))))
+        for alpha = 1 then (* 0.1 alpha)
+        for x-prime = (add-v-v x (prod-s-v alpha direction))
+        for (y-prime g-prime) = (multiple-value-list (funcall gradient x-prime))
         while (not (and (<= y-prime (+ y (* 1e-4 alpha g-times-d)))
                         (>= (inner-product g-prime direction) (* 0.9 g-times-d))))
-        finally (return alpha)))
+        finally (return (values alpha x-prime g-prime))))
 
 ; XXX: Will not complain if given vectors of different lengths.
 (defun inner-product (a b)
@@ -61,15 +64,6 @@
              for column below columns
              do (setf (aref transpose column row) (aref m row column)))
         finally (return transpose)))
-
-; XXX: Will not complain if the matrices are incompatible.
-(defun add-m-m (a b)
-  (loop with sum = (make-array (array-dimensions a) :element-type 'single-float)
-        for i below (array-dimension a 0)
-        do (loop
-             for j below (array-dimension a 1)
-             do (setf (aref sum i j) (+ (aref a i j) (aref b i j))))
-        finally (return sum)))
 
 ; XXX: Will not complain if given vectors of different lengths.
 (defun add-v-v (a b)
