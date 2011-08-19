@@ -1,10 +1,10 @@
 (in-package :clcrf)
 
-(defun lbfgs (gradient &key dimen (history 5))
+(defun lbfgs (gradient &key dimen (history 5) initial-x)
   (loop with H0 = (unit dimen)
         with x-history = (mk-circular history)
         with g-history = (mk-circular history)
-        with x = (make-array dimen :initial-element 1.0 :element-type 'single-float)
+        with x = (if initial-x initial-x (make-array dimen :initial-element 1.0 :element-type 'single-float))
         with (y g) = (multiple-value-list (funcall gradient x))
         for k from 0
         for d = (find-direction k H0 x-history g g-history history)
