@@ -1,54 +1,48 @@
 (in-package :clcrf)
 
 (defun lbfgs (gradient &key dimen (history 5) initial-x)
-  (loop with H0 = (unit dimen)
-        with x-history = (mk-circular history)
+  (loop with x-history = (mk-circular history)
         with g-history = (mk-circular history)
         with x = (if initial-x initial-x (make-array dimen :initial-element 1.0 :element-type 'single-float))
         with (y g) = (multiple-value-list (funcall gradient x))
         for k from 0
-        for d = (find-direction k H0 x-history g g-history history)
+        for d = (prod-s-v -1.0 g) then (find-direction k x-history g g-history history)
         for (alpha x-prime g-prime) = (multiple-value-list (line-search gradient d x y g))
         do (setf (cref x-history k) (sub-v-v x-prime x)
                  (cref g-history k) (sub-v-v g-prime g)
                  x x-prime
                  g g-prime)
-           (format t "L-BFGS: alpha: ~a; next x: ~a; next g: ~a~%" alpha x-prime g-prime)))
+           (format t "L-BFGS: alpha: ~a (~a); next x: ~a; next g: ~a~%" alpha d x-prime g-prime)))
 
-(defun find-direction (k H0 x-history g g-history history)
-  (let* ((incr  (if (<= k history) 0 (- k history)))
-         (bound (if (<= k history) k history))
-         (q (make-array (1+ bound)))
-         (alpha (make-array bound)))
-    (loop initially (setf (aref q bound) g)
-          for i from (1- bound) downto 0
-          for j   = (+ i incr)
-          ;for rho = (/ 1 (inner-product (cref g-history j) (cref x-history j)))
-          for a   = (* (cref rho j) (inner-product (cref x-history j) (aref q (1+ i))))
-          do (setf (aref alpha i) a
-                   (aref q     i) (sub-v-v (aref q (1+ i)) (prod-s-v a (cref g-history j)))))
-    (loop with r = (make-array (1+ bound))
-          initially (setf (aref r 0) (prod-m-v H0 (aref q 0)))
-          for i below bound
-          for j    = (+ i incr)
-          ;for rho  = (/ 1 (inner-product (cref g-history j) (cref x-history j)))
-          for beta = (* (cref rho j) (inner-product (cref g-history j) (aref r i)))
-          do (setf (aref r (1+ i)) (add-v-v (aref r i) (prod-s-v (- (aref alpha i) beta) (cref x-history j))))
-          finally (return (prod-s-v -1.0 (aref r bound))))))
+(defun find-direction (k x-history g g-history history)
+  (loop with H0     = (unit (length g) :value (/ (inner-product (cref x-history (1- k)) (cref g-history (1- k)))
+                                                 (inner-product (cref g-history (1- k)) (cref g-history (1- k)))))
+        with alphas = (mk-circular history)
+        with rhos   = (mk-circular history)
+        with q      = (loop
+                        with q    = g
+                        for i     from (1- k) downto (max (- k history) 0)
+                        for rho   = (/ 1 (inner-product (cref g-history i) (cref x-history i)))
+                        for alpha = (* rho (inner-product (cref x-history i) q))
+                        do (setf (cref rhos i)   rho
+                                 (cref alphas i) alpha
+                                 q               (sub-v-v q (prod-s-v alpha (cref g-history i))))
+                        finally (return q))
+        with r       = (prod-m-v H0 q)
+        for  i       from (max (- k history) 0) below k
+        for beta     = (* (cref rhos i) (inner-product (cref g-history i) r))
+        do (setf r (add-v-v r (prod-s-v (- (cref alphas i) beta) (cref x-history i))))
+        finally (return (prod-s-v -1.0 r))))
 
 (defun line-search (gradient direction x y g)
   (loop with g-times-d = (inner-product g direction)
-        with curvature = (* 0.9 g-times-d)
         for alpha = 1.0 then (* 0.1 alpha)
         for x-prime = (add-v-v x (prod-s-v alpha direction))
         for (y-prime g-prime) = (multiple-value-list (funcall gradient x-prime))
         for armijo = (+ y (* 1e-4 alpha g-times-d))
-        for curvature-prime = (inner-product g-prime direction)
         do (format t "  Trying alpha=~a (x'=~a y'=~a g'=~a)~%" alpha x-prime y-prime g-prime)
-        ;do (format t "  Armijo:  ~a/~a; curvature: ~a/~a~%" y-prime armijo curvature-prime curvature)
         if (eql 0.0 alpha) do (error "alpha=0.0")
-        while (not (and (<= y-prime armijo)
-                        (>= curvature-prime curvature)))
+        until (<= y-prime armijo)
         finally (return (values alpha x-prime g-prime))))
 
 ; XXX: Will not complain if given vectors of different lengths.
@@ -110,10 +104,10 @@
         do (setf (aref product i) value)
         finally (return product)))
 
-(defun unit (dimen)
+(defun unit (dimen &key (value 1.0))
   (loop with m = (make-array (list dimen dimen) :element-type 'single-float)
         for i below dimen
-        do (setf (aref m i i) 1.0)
+        do (setf (aref m i i) value)
         finally (return m)))
 
 ; vim: ts=2:sw=2:sts=2:syntax=lisp
