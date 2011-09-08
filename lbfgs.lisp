@@ -3,22 +3,23 @@
 (defun lbfgs (gradient &key dimen (history 5) initial-x)
   (loop with x-history = (mk-circular history)
         with g-history = (mk-circular history)
+        with rho       = (mk-circular history)
         with x = (if initial-x initial-x (make-array dimen :initial-element 1.0 :element-type 'single-float))
         with (y g) = (multiple-value-list (funcall gradient x))
         for k from 0
-        for d = (prod-s-v -1.0 g) then (find-direction k x-history g g-history history)
+        for d = (prod-s-v -1.0 g) then (find-direction k x-history g g-history history rho)
         for (alpha x-prime g-prime) = (multiple-value-list (line-search gradient d x y g))
         do (setf (cref x-history k) (sub-v-v x-prime x)
                  (cref g-history k) (sub-v-v g-prime g)
+                 (cref rho       k) (/ 1 (inner-product (cref g-history k) (cref x-history k)))
                  x x-prime
                  g g-prime)
            (format t "L-BFGS: alpha: ~a (~a); next x: ~a; next g: ~a~%" alpha d x-prime g-prime)))
 
-(defun find-direction (k x-history g g-history history)
+(defun find-direction (k x-history g g-history history rhos)
   (loop with H0     = (unit (length g) :value (/ (inner-product (cref x-history (1- k)) (cref g-history (1- k)))
                                                  (inner-product (cref g-history (1- k)) (cref g-history (1- k)))))
         with alphas = (mk-circular history)
-        with rhos   = (mk-circular history)
         with q      = (loop
                         with q    = g
                         for i     from (1- k) downto (max (- k history) 0)
