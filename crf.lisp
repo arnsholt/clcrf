@@ -112,17 +112,20 @@
         finally (return (float mantissa))))
 
 (defun decode-crf (crf input &key posterior)
-  (loop with input = (apply-templates crf (sentence-as-list input))
-        with psi   = (if posterior (posterior-psi crf input) (psi crf input))
+  (loop with obs   = (cons (unigram-observations crf (apply-templates crf (sentence-as-list input)))
+                           (bigram-observations crf (apply-templates crf (sentence-as-list input))))
         with Y     = (quarks-size (crf-tagset crf))
-        with L     = (length input)
+        with L     = (length (sentence-as-list input))
         with back  = (make-array (list L Y))
         ; XXX: Maybe :initial-element (and the clearing out below) should use
         ; most-negative-single-float instead. If all possible potentials are
         ; negative, strange things will probably happen...
         with prev  = (make-array Y :initial-element 0)
         with cur   = (make-array Y :initial-element 0)
-        initially (loop for q below Y do (setf (aref cur q) (aref psi 0 0 q)))
+        initially (loop for q below Y
+                        for psi-here = (potential-at crf obs 0 0 q :posterior posterior)
+                        do (setf (aref cur q) psi-here
+                                 (aref back 0 q) (cons nil psi-here)))
         for i from 1 below L
         ; Swap prev. and cur:
         do (psetf prev cur cur prev)
@@ -132,16 +135,19 @@
              for q from 0 below Y
              do (loop
                   for q-prime from 0 below Y
-                  for potential = (if posterior (* (aref psi i q-prime q) (aref prev q-prime))
-                                                (+ (aref psi i q-prime q) (aref prev q-prime)))
-                  if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) q-prime)))
-        finally (return (decode-backtrace back psi (argmax (lambda (x) x) cur) (1- L)))))
+                  for psi-here  = (potential-at crf obs i q-prime q :posterior posterior)
+                  for potential = (if posterior (* psi-here (aref prev q-prime))
+                                                (+ psi-here (aref prev q-prime)))
+                  if (> potential (aref cur q)) do (setf (aref cur q) potential (aref back i q) (cons q-prime psi-here))))
+        finally (return (decode-backtrace back (argmax (lambda (x) x) cur) (1- L)))))
 
-(defun decode-backtrace (back psi q i)
-  (let ((q-prime (aref back i q)))
+(defun decode-backtrace (back q i)
+  (let* ((elem (aref back i q))
+         (q-prime (car elem))
+         (psi (cdr elem)))
     (if (> i 1)
-      (append (decode-backtrace back psi q-prime (1- i)) (list (list q (aref psi i q-prime q))))
-      (list (list q-prime (aref psi 0 0 q-prime)) (list q (aref psi 1 q-prime q))))))
+      (append (decode-backtrace back q-prime (1- i)) (list (list q psi)))
+      (list (list q-prime (cdr (aref back 0 q-prime))) (list q psi)))))
 
 (defun argmax (lambda list)
   (loop with best-val = nil
@@ -184,6 +190,19 @@
                                                         (quarks-to-int (crf-observations crf) observation)))
                                                  token)))
           input))
+
+(defun potential-at (crf obs i q-prime q &key posterior)
+  ; TODO: Implement :posterior argument
+  (if (> i 0)
+    (+ (reduce #'+ (mapcar (lambda (observation)
+                             (unigram-potential crf observation q))
+                           (elt (car obs) i)))
+       (reduce #'+ (mapcar (lambda (observation)
+                             (bigram-potential crf observation q-prime q))
+                           (elt (cdr obs) i))))
+    (reduce #'+ (mapcar (lambda (observation)
+                          (unigram-potential crf observation q))
+                        (elt (car obs) i)))))
 
 (defun psi (crf input)
   (let* ((L (length input))
