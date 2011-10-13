@@ -193,6 +193,10 @@
 
 (defun potential-at (crf obs i q-prime q &key posterior)
   ; TODO: Implement :posterior argument
+  ; XXX: A possible cause for the slowdown here that all this probably is done
+  ; with rats or something equally stupid. Try to declare() it down to floats.
+  ; The scaling factor between master and implicit-posi for time and processor
+  ; cycles are roughly the same, so I think it's types killing us.
   (if (> i 0)
     (+ (reduce #'+ (mapcar (lambda (observation)
                              (unigram-potential crf observation q))
