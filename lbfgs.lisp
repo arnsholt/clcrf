@@ -6,6 +6,7 @@
         with rho       = (mk-circular history)
         with x = (if initial-x initial-x (make-array dimen :initial-element 1.0 :element-type 'single-float))
         with (y g) = (multiple-value-list (funcall gradient x))
+        while (not (eql 0.0 (inner-product g g)))
         for k from 0
         for d = (prod-s-v -1.0 g) then (find-direction k x-history g g-history history rho)
         for (alpha x-prime g-prime) = (multiple-value-list (line-search gradient d x y g))
