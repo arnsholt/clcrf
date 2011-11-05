@@ -1,11 +1,13 @@
 (in-package :clcrf)
 
+(declaim (optimize (speed 3) (space 0) (debug 1)))
+
 (defstruct crf
   templates
   tagset
   observations
-  offsets
-  weights)
+  (offsets nil (:type (simple-array fixnum (*))))
+  (weights nil (:type hash-table)))
 
 (defmethod print-object ((crf crf) stream)
   (format stream "<CRF: ~a templates, ~a tags, ~a observations>"
@@ -153,6 +155,8 @@
         finally (return (values best-idx best-val))))
 
 (defun unigram-potential (crf observation q)
+  (declare (type fixnum observation q))
+  ;(declare (:explain (:inlining t)))
   (gethash (+ observation q) (crf-weights crf) 0.0))
 
 (defun unigram-observations (crf input)
@@ -166,6 +170,8 @@
           input))
 
 (defun bigram-potential (crf observation q-prime q)
+  (declare (type fixnum observation q-prime q))
+  ;(declare (:explain (:inlining t)))
   (gethash (+ observation (* q-prime (quarks-size (crf-tagset crf))) q) (crf-weights crf) 0.0))
 
 (defun bigram-observations (crf input)
@@ -186,6 +192,7 @@
           input))
 
 (defun psi (crf input)
+  ;(declare (:explain (:inlining t)))
   (let* ((L (length input))
          (Y (quarks-size (crf-tagset crf)))
          (psi (make-array (list L Y Y) :initial-element 0.0 :element-type 'single-float))
