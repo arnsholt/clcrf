@@ -289,4 +289,41 @@
           do (setf (aref matrix index i) (* val scale))
           finally (return scale))))
 
+(defun crf-train (&key training dev templates)
+  ; Training a CRF:
+  ; 1) Read in training corpus.
+  ; 2) Extract observations and labels from training corpus.
+  ; 3) Count number of features in model.
+  ; 4) Estimate parameter weights.
+  (let ((crf (extract-basics training templates)))
+  ))
+
+(defun templates-from-file (filename)
+  (with-open-file (file filename :direction :input)
+    (loop for line = (read-line file nil nil)
+          while line
+          collect line into templates
+          finally (return (compile-templates templates)))))
+
+(defun extract-basics (training templates)
+  (loop with observations = (make-quarks)
+        with tags = (make-quarks)
+        with crf = (make-crf :observations observations
+                             :tagset tags
+                             :templates (templates-from-file templates))
+        with corpus = (read-corpus training :tagged t)
+        for sentence across (corpus-sentences corpus)
+        for seq = (apply-templates crf (sentence-as-list sentence))
+        ; Collect observations.
+        do (loop
+             for token in seq
+             do (loop
+                  for observation in token
+                  do (insert-quark observations observation)))
+        do (loop
+             for observation across (sentence-observations sentence)
+             do (insert-quark tags (observation-tag observation)))
+        finally (setf (crf-weights crf) (make-array (compute-offsets crf) :initial-element 1.0))
+                (return crf)))
+
 ; vim: ts=2:sw=2:sts=2
