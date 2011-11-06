@@ -9,7 +9,7 @@
         `(plan ,plan))
      ,@tests
      (if (> *count* ,plan)
-       (diag (format nil "Looks like you planned ~a tests but ran ~a." ,plan *count*)))))
+       (diag "Looks like you planned ~a tests but ran ~a." ,plan *count*))))
 
 (defmacro todo (reason &body tests)
   `(let ((*todo* ,reason))
@@ -23,13 +23,23 @@
     (pass message)
     (fail message)))
 
-(defun diag (message)
-  (format t "# ~a~%" message))
+(defun diag (message &rest data)
+  ;(format t "# ~a~%" message))
+  (format t "# ")
+  (apply #'format t message data)
+  (format t "~%"))
 
 (defun is (got expected message &key (test #'equal))
   (let ((result (funcall test got expected)))
     (ok result message)
-    (if (not result) (diag (format nil "Got: ~a, expected ~a" got expected)))))
+    (if (not result) (diag "Got: ~a, expected ~a" got expected))))
+
+;;; XXX: Epic hack to make sure floats are more or less equal.
+(defun is-almost (x y &optional message)
+    (let* ((ratio (abs (- 1 (/ x y))))
+           (result (> 1.0e-6 ratio)))
+      (ok result message)
+      (if (not result) (diag "abs(1 - ~a/~a) = ~a > 1.0e-6" x y ratio))))
 
 (defun pass (message)
   (format t "ok ~a" (incf *count*))

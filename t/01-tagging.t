@@ -5,11 +5,7 @@
 
 (in-package :clcrf)
 
-;;; XXX: Epic hack to make sure floats are more or less equal.
-(defun is-almost (x y)
-    (> 1.0e-6 (abs (- 1(/ x y))))  )
-
-(test 22
+(test 44
   (let* ((sequence (corpus-sentence (read-corpus "t/test.cor") 0))
          (crf (read-crf "t/test.crf"))
          (gold '(("-s---fb--i" 10.056463)
@@ -33,9 +29,37 @@
                  ("1s---fb--i" 10.083181)
                  ("-p---mn--i" 9.914193)
                  ("3ppip----i" 11.642814)))
-         (tagged (decode-crf crf sequence)))
+         (post-gold '(("-s---fb--i" 0.660007)
+                      ("3spia----i" 0.981510)
+                      ("-s---pn--i" 0.596927)
+                      ("-srppfn--i" 0.658461)
+                      ("---------n" 0.999772)
+                      ("-p---fa--i" 0.943189)
+                      ("-p---pa--i" 0.680760)
+                      ("-p---fg--i" 0.946256)
+                      ("-s---fa--i" 0.950889)
+                      ("3ppia----i" 0.978753)
+                      ("-p---mn--i" 0.930184)
+                      ("-s---fa--i" 0.852514)
+                      ("-p---mn--i" 0.449392)
+                      ("-s---fa--i" 0.972264)
+                      ("-p---mn--i" 0.818788)
+                      ("3p---mg--i" 0.912727)
+                      ("-s---fb--i" 0.840144)
+                      ("-p---mn--i" 0.459790)
+                      ("1s---fb--i" 0.620069)
+                      ("-p---mn--i" 0.974016)
+                      ("3ppip----i" 0.926985)
+         ))
+         (tagged (decode-crf crf sequence))
+         (post-tagged (decode-crf crf sequence :posterior t)))
+  ; Check normal decoding
   (is (mapcar (lambda (tag) (quarks-to-string (crf-tagset crf) tag)) (mapcar #'first tagged))
               (mapcar #'first gold) "tagging consistent with wapiti" :test #'equalp)
-  (mapcar (lambda (x y) (ok (is-almost (second x) (second y)) "potential consistent with wapiti")) tagged gold)))
+  (mapcar (lambda (x y) (is-almost (second x) (second y) "potential consistent with wapiti")) tagged gold)
+  ; Check posterior decoding
+  (is (mapcar (lambda (tag) (quarks-to-string (crf-tagset crf) tag)) (mapcar #'first post-tagged))
+              (mapcar #'first post-gold) "posterior tagging consistent with wapiti" :test #'equalp)
+  (mapcar (lambda (x y) (is-almost (second x) (second y) "posterior potential consistent with wapiti")) post-tagged post-gold)))
 
 ; vim: ts=2:sw=2:sts=2:syntax=lisp
