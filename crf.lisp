@@ -156,7 +156,6 @@
 
 (defun unigram-potential (crf observation q)
   (declare (type fixnum observation q))
-  ;(declare (:explain (:inlining t)))
   (gethash (+ observation q) (crf-weights crf) 0.0))
 
 (defun unigram-observations (crf input)
@@ -171,7 +170,6 @@
 
 (defun bigram-potential (crf observation q-prime q)
   (declare (type fixnum observation q-prime q))
-  ;(declare (:explain (:inlining t)))
   (gethash (+ observation (* q-prime (quarks-size (crf-tagset crf))) q) (crf-weights crf) 0.0))
 
 (defun bigram-observations (crf input)
@@ -192,34 +190,35 @@
           input))
 
 (defun psi (crf input)
-  ;(declare (:explain (:inlining t)))
+  (declare (type list input))
   (let* ((L (length input))
          (Y (quarks-size (crf-tagset crf)))
          (psi (make-array (list L Y Y) :initial-element 0.0 :element-type 'single-float))
          (unigram-observations (unigram-observations crf input))
          (bigram-observations  (bigram-observations  crf input)))
-    (loop for i below L
+    (declare (type fixnum Y))
+    (loop for observations in unigram-observations
+          for i below L
           do (loop
             for q below Y
-            for potential = (reduce #'+ (mapcar (lambda (observation)
-                                                  (unigram-potential crf observation q))
-                                                (elt unigram-observations i)))
+            for potential single-float = (loop for obs in observations sum (unigram-potential crf obs q))
             do (loop for q-prime below Y do (incf (aref psi i q-prime q) potential))))
-    (loop for i from 1 below L
+    (loop for observations in bigram-observations
+          for i from 1 below L
           do (loop
                for q below Y
                do (loop
                     for q-prime below Y
-                    for potential = (reduce #'+ (mapcar (lambda (observation)
-                                                               (bigram-potential crf observation q-prime q))
-                                                             (elt bigram-observations i)))
+                    for potential single-float = (loop for obs in observations
+                                                       sum (bigram-potential crf obs q-prime q))
                     do (incf (aref psi i q-prime q) potential)))
           finally (return psi))))
 
 (defun epsi (crf input)
-  (loop with psi = (psi crf input)
+  (declare (type list input))
+  (loop with psi of-type (simple-array single-float (* * *)) = (psi crf input)
         with L = (length input)
-        with Y = (quarks-size (crf-tagset crf))
+        with Y fixnum = (quarks-size (crf-tagset crf))
         for i below L
         do (loop
              for q below Y
@@ -229,11 +228,12 @@
         finally (return psi)))
 
 (defun posterior-psi (crf input)
+  (declare (type list input))
   (loop with L = (length input)
-        with Y = (quarks-size (crf-tagset crf))
-        with psi = (make-array (list L Y Y) :element-type 'single-float)
-        with alpha = (alpha crf input)
-        with beta = (beta crf input)
+        with Y fixnum = (quarks-size (crf-tagset crf))
+        with epsi of-type (simple-array single-float (* * *)) = (epsi crf input)
+        with alpha of-type (simple-array single-float (* *)) = (alpha crf input epsi)
+        with beta of-type (simple-array single-float (* *)) = (beta crf input epsi)
         for i below L
         do (loop
              with z = (/ 1.0 (loop for q below Y summing (* (aref alpha i q) (aref beta i q))))
@@ -241,16 +241,12 @@
              for posterior = (* (aref alpha i q) (aref beta i q) z)
              do (loop
                   for q-prime below Y
-                  do (setf (aref psi i q-prime q) posterior)))
-        finally (return psi)))
+                  do (setf (aref epsi i q-prime q) posterior)))
+        finally (return epsi)))
 
-; XXX: alpha() and beta() recompute their own potential matrices. This is
-; probably wasteful in the long run since both will have to be called for the
-; forward-backward computation.
-(defun alpha (crf seq)
+(defun alpha (crf seq psi)
     (loop with L = (length seq)
           with Y = (quarks-size (crf-tagset crf))
-          with psi = (epsi crf seq)
           with alpha = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
           with scales = (make-array L :element-type 'single-float)
           initially (loop for q below Y do (setf (aref alpha 0 q) (aref psi 0 0 q)))
@@ -265,10 +261,9 @@
              (setf (aref scales i) (scale alpha i))
           finally (return (values alpha scales))))
 
-(defun beta (crf seq)
+(defun beta (crf seq psi)
   (loop with L = (length seq)
           with Y = (quarks-size (crf-tagset crf))
-          with psi = (epsi crf seq)
           with beta = (make-array (list L Y) :initial-element 0.0 :element-type 'single-float)
           initially (loop for q below Y do (setf (aref beta (1- L) q) (/ 1.0 Y)))
           for i from (1- L) above 0
