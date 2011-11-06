@@ -29,19 +29,20 @@
         crf))))
 
 (defun compute-offsets (crf)
-  (let* ((obs-count (quarks-size (crf-observations crf)))
-         (offsets   (make-array obs-count))
-         (offset    0)
-         (Y         (quarks-size (crf-tagset crf))))
-    (loop for i below obs-count
-          for observation = (quarks-to-string (crf-observations crf) i)
-          if (equal "u" (subseq observation 0 1)) do (setf (aref offsets i) offset)
-                                                     (incf offset Y)
-          if (equal "b" (subseq observation 0 1)) do (setf (aref offsets i) offset)
-                                                     (incf offset (* Y Y))
-          if (equal "*" (subseq observation 0 1)) do (setf (aref offsets i) offset)
-                                                     (incf offset (+ Y (* Y Y))))
-    (setf (crf-offsets crf) offsets)))
+  (loop with obs-count = (quarks-size (crf-observations crf))
+        with offsets   = (make-array obs-count)
+        with offset    = 0
+        with Y         = (quarks-size (crf-tagset crf))
+        for i below obs-count
+        for observation = (quarks-to-string (crf-observations crf) i)
+        if (equal "u" (subseq observation 0 1)) do (setf (aref offsets i) offset)
+                                                   (incf offset Y)
+        if (equal "b" (subseq observation 0 1)) do (setf (aref offsets i) offset)
+                                                   (incf offset (* Y Y))
+        if (equal "*" (subseq observation 0 1)) do (setf (aref offsets i) offset)
+                                                   (incf offset (+ Y (* Y Y)))
+        finally (setf (crf-offsets crf) offsets)
+                (return offset)))
 
 (defun compile-templates (templates)
   (mapcar #'compile-template templates))
