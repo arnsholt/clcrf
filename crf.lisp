@@ -54,6 +54,7 @@
   (loop
     with start = 0
      and format = ""
+    initially (nstring-downcase template :end 1)
     for (match-start match-end reg-start reg-end) = (multiple-value-list
                                                       (cl-ppcre:scan "%x\\[([+-]?\\d+),(\\d+)\\]" template :start start))
     while match-start
