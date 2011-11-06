@@ -2,14 +2,19 @@
 
 ;;; Quick and dirty hack for string <-> int conversion.
 (defstruct quarks
-  (size 0)
-  (string-to-int (make-hash-table :test #'equal))
-  (int-to-string (make-array 100 :adjustable 't :fill-pointer 0)))
+  (size 0 (:type fixnum))
+  (string-to-int (make-hash-table :test #'equal) (:type hash-table))
+  (int-to-string (make-array 100 :adjustable 't :fill-pointer 0) (:type (simple-array string (*)))))
+
+(declaim (ftype (function quarks fixnum) quarks-size))
 
 (defun add-quark (quarks item)
   (incf (quarks-size quarks))
   (setf (gethash item (quarks-string-to-int quarks))
         (vector-push-extend item (quarks-int-to-string quarks))))
+
+(defun insert-quark (quarks item)
+  (or (quarks-to-int quarks item) (add-quark quarks item)))
 
 (defun quarks-from-list (list)
   (let ((quarks (make-quarks)))
