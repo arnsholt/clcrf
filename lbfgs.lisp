@@ -1,5 +1,7 @@
 (in-package :clcrf)
 
+(declaim (optimize (speed 3) (space 0) (debug 1)))
+
 (defun lbfgs (gradient &key dimen (history 5) initial-x)
   (loop with x-history = (mk-circular history)
         with g-history = (mk-circular history)
